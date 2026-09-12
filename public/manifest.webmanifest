@@ -1,0 +1,17 @@
+{
+  "name": "QRCard · 一个二维码，就是你的个人主页",
+  "short_name": "QRCard",
+  "description": "纯前端、Local-First 的个人电子名片工具:个人主页数据压缩进二维码,扫码后浏览器本地还原。无需注册、无需服务器、无需数据库。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f1e8",
+  "theme_color": "#ffdc58",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
