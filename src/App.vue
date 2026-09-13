@@ -2,6 +2,7 @@
 import { RouterLink, RouterView } from 'vue-router'
 import { QrCode, ScanLine, Github, Lock } from 'lucide-vue-next'
 import { toasts } from './store/toast'
+import SaveFallbackOverlay from './components/SaveFallbackOverlay.vue'
 </script>
 
 <template>
@@ -45,6 +46,9 @@ import { toasts } from './store/toast'
         </div>
       </div>
     </footer>
+
+<!-- 内置浏览器下载兜底浮层(微信/支付宝等,全局唯一实例) -->
+    <SaveFallbackOverlay />
 
     <!-- Toast -->
     <div class="toast-wrap">

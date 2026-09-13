@@ -71,9 +71,11 @@ function platformLabel(type: string, label: string) {
   return known[type] ?? label ?? '链接'
 }
 
-function saveVCard() {
-  downloadVCard(props.profile)
-  toast('联系人文件已下载')
+async function saveVCard() {
+  const r = await downloadVCard(props.profile)
+  if (r === 'downloaded') toast('联系人文件已下载')
+  else if (r === 'shared') toast('已调起系统分享,可选择存储文件')
+  // overlay:浮层自身已展示「在浏览器打开」引导,无需 toast
 }
 </script>
 

@@ -1,6 +1,7 @@
 // 分享卡片:Canvas 本地生成 PNG 海报(头像 + 姓名 + 二维码)
 import QRCode from 'qrcode'
 import type { PublicProfile } from '../types'
+import { saveBlobCompat, type SaveResult } from '../store/save'
 
 const INK = '#111111'
 const PAPER = '#f5f1e8'
@@ -154,16 +155,10 @@ export async function drawShareCard(profile: PublicProfile, qrContent: string): 
   return canvas
 }
 
-export async function exportShareCard(profile: PublicProfile, qrContent: string, filename: string): Promise<void> {
+export async function exportShareCard(profile: PublicProfile, qrContent: string, filename: string): Promise<SaveResult> {
   const canvas = await drawShareCard(profile, qrContent)
   const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/png'))
   if (!blob) throw new Error('图片生成失败')
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  // 走兼容保存:内置浏览器(微信/支付宝)降级为系统分享或长按保存浮层
+  return saveBlobCompat(blob, filename)
 }

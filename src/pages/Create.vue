@@ -12,7 +12,8 @@ import { buildQRContent, capacityInfo, type CapacityInfo } from '../qr/generate'
 import { toPublicProfile } from '../profile/sanitize'
 import { compressAvatar } from '../profile/avatar'
 import { dbListCards, dbPutCard, dbDeleteCard, dbClearCards, newCardId } from '../storage/indexeddb'
-import { toast, downloadBlob } from '../store/toast'
+import { toast } from '../store/toast'
+import { saveBlobCompat } from '../store/save'
 import ProfileEditor from '../components/ProfileEditor.vue'
 import ProfileCard from '../components/ProfileCard.vue'
 import CapacityMeter from '../components/CapacityMeter.vue'
@@ -132,11 +133,14 @@ function draftDate(ts: number): string {
 }
 
 // ---------- 导入 / 导出 ----------
-function exportCard() {
+async function exportCard() {
   const data: QrcardFile = { version: 1, profile: cloneProfile(profile.value) }
   const name = profile.value.name.trim() || '名片'
-  downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), `QRCard-${name}.qrcard`)
-  toast('名片文件已导出(.qrcard)')
+  const json = JSON.stringify(data, null, 2)
+  // copyText 兜底:内置浏览器无法下载文件时,浮层里可一键复制名片数据
+  const r = await saveBlobCompat(new Blob([json], { type: 'application/json' }), `QRCard-${name}.qrcard`, { copyText: json })
+  if (r === 'downloaded') toast('名片文件已导出(.qrcard)')
+  else if (r === 'shared') toast('已调起系统分享,可选择存储文件')
 }
 
 async function importCard(e: Event) {

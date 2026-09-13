@@ -5,7 +5,8 @@ import { X, Download, Printer, Copy, FileDown, RefreshCcw, Share2, ShieldCheck }
 import type { Profile, PublicProfile } from '../types'
 import { renderQrToCanvas, renderQrToDataUrl } from '../qr/generate'
 import { exportShareCard } from '../profile/sharecard'
-import { copyText, downloadBlob, toast } from '../store/toast'
+import { copyText, toast } from '../store/toast'
+import { saveBlobCompat } from '../store/save'
 
 const props = defineProps<{
   publicProfile: PublicProfile
@@ -28,9 +29,10 @@ async function render() {
   try {
     if (canvasEl.value) {
       await renderQrToCanvas(canvasEl.value, props.qrContent, props.ec as any)
-      // qrcode.toCanvas 会写入 560px 的内联宽高,覆盖回模态框内的固定显示尺寸(内部仍为 560px,保证清晰)
+      // qrcode.toCanvas 会写入 560px 的内联宽高;覆盖为固定显示宽度 + 高度 auto(画布固有 1:1,等比缩放),
+      // 配合 max-w-full,窄屏(微信/支付宝内置浏览器)下也不会超出模态框
       canvasEl.value.style.width = '240px'
-      canvasEl.value.style.height = '240px'
+      canvasEl.value.style.height = 'auto'
     }
     qrDataUrl.value = await renderQrToDataUrl(props.qrContent, props.ec as any, 560)
   } catch {
@@ -43,18 +45,20 @@ watch(() => props.qrContent, render)
 
 async function saveQrPng() {
   if (!canvasEl.value) return
-  canvasEl.value.toBlob((blob) => {
-    if (blob) {
-      downloadBlob(blob, `QRCard-${safeName()}.png`)
-      toast('二维码已保存')
-    }
+  canvasEl.value.toBlob(async (blob) => {
+    if (!blob) return
+    // 微信/支付宝内置浏览器里 a[download] 会被拦截,由 saveBlobCompat 自动降级为分享/长按保存
+    const r = await saveBlobCompat(blob, `QRCard-${safeName()}.png`)
+    if (r === 'downloaded') toast('二维码已保存')
+    else if (r === 'shared') toast('已调起系统分享,可选择保存图片')
   }, 'image/png')
 }
 
 async function sharePng() {
   try {
-    await exportShareCard(props.publicProfile, props.qrContent, `QRCard分享-${safeName()}.png`)
-    toast('分享图片已生成')
+    const r = await exportShareCard(props.publicProfile, props.qrContent, `QRCard分享-${safeName()}.png`)
+    if (r === 'downloaded') toast('分享图片已生成')
+    else if (r === 'shared') toast('已调起系统分享,可选择保存图片')
   } catch {
     toast('分享图片生成失败', 'error')
   }
@@ -87,9 +91,9 @@ async function copyData() {
         </div>
       </div>
 
-      <div class="mx-auto mb-3 w-fit p-2.5 bg-white border-[3px] border-[var(--ink)] rounded-lg shadow-[5px_5px_0_var(--ink)]">
-        <canvas v-show="!failed" ref="canvasEl" class="block w-[240px] h-[240px]" aria-label="个人名片二维码"></canvas>
-        <div v-if="failed" class="w-[240px] h-[240px] flex items-center justify-center text-[13px] font-bold text-[#c92a2a] px-4 text-center">
+      <div class="mx-auto mb-3 w-fit max-w-full p-2.5 bg-white border-[3px] border-[var(--ink)] rounded-lg shadow-[5px_5px_0_var(--ink)]">
+        <canvas v-show="!failed" ref="canvasEl" class="block w-[240px] max-w-full h-auto" aria-label="个人名片二维码"></canvas>
+        <div v-if="failed" class="w-[240px] max-w-full aspect-square flex items-center justify-center text-[13px] font-bold text-[#c92a2a] px-4 text-center">
           二维码生成失败:内容超出当前纠错等级容量
         </div>
       </div>

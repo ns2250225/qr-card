@@ -1,5 +1,6 @@
-// vCard:根据 Profile 生成 .vcf(Blob → Object URL → 下载),无需服务器
+// vCard:根据 Profile 生成 .vcf 并保存(兼容微信/支付宝内置浏览器),无需服务器
 import type { PublicProfile } from '../types'
+import { saveBlobCompat, type SaveResult } from '../store/save'
 
 function escapeVCard(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
@@ -29,14 +30,9 @@ export function buildVCard(p: PublicProfile): string {
   return lines.join('\r\n')
 }
 
-export function downloadVCard(p: PublicProfile): void {
-  const blob = new Blob([buildVCard(p)], { type: 'text/vcard;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${(p.name || '名片').replace(/[\\/:*?"<>|]/g, '')}.vcf`
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+export async function downloadVCard(p: PublicProfile): Promise<SaveResult> {
+  const text = buildVCard(p)
+  const blob = new Blob([text], { type: 'text/vcard;charset=utf-8' })
+  // copyText 兜底:内置浏览器无法下载文件时,浮层里可一键复制联系人文本
+  return saveBlobCompat(blob, `${(p.name || '名片').replace(/[\\/:*?"<>|]/g, '')}.vcf`, { copyText: text })
 }
