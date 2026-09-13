@@ -90,13 +90,20 @@ export class CameraScanner {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error('当前环境不支持摄像头(需要 HTTPS 或 localhost)')
     }
-    this.stream = await navigator.mediaDevices.getUserMedia({
+    // 拿到流之后再绑定 video;任一步失败都要停掉轨道,避免摄像头一直被占用
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false,
     })
-    video.srcObject = this.stream
-    video.setAttribute('playsinline', 'true')
-    await video.play()
+    try {
+      video.srcObject = stream
+      video.setAttribute('playsinline', 'true')
+      await video.play()
+    } catch (err) {
+      stream.getTracks().forEach((t) => t.stop())
+      throw err
+    }
+    this.stream = stream
 
     this.timer = setInterval(async () => {
       if (video.readyState < 2) return

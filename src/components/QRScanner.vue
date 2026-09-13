@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 扫描器 UI:摄像头实时扫描 + 图片上传识别
 // 状态机:IDLE → CAMERA_REQUEST → SCANNING / DENIED → DETECTED
-import { onBeforeUnmount, ref } from 'vue'
+import { nextTick, onBeforeUnmount, ref } from 'vue'
 import { Camera, CameraOff, Upload, RefreshCcw, Loader2 } from 'lucide-vue-next'
 import { CameraScanner, decodeImageFile } from '../qr/scan'
 import { toast } from '../store/toast'
@@ -20,9 +20,17 @@ async function startCamera() {
   if (status.value === 'requesting' || status.value === 'scanning') return
   status.value = 'requesting'
   statusText.value = '正在请求摄像头…'
+  // <video> 只在非 idle 分支渲染,先等 DOM 随 status 切换挂载完成,再取引用
+  await nextTick()
+  const video = videoEl.value
+  if (!video) {
+    status.value = 'denied'
+    statusText.value = '视频组件未就绪,请重试'
+    return
+  }
   try {
     await scanner.start(
-      videoEl.value!,
+      video,
       (text) => {
         status.value = 'idle'
         statusText.value = ''
@@ -38,6 +46,8 @@ async function startCamera() {
     status.value = 'scanning'
     statusText.value = '扫描中…将二维码放入框内'
   } catch (err: any) {
+    // getUserMedia 成功但绑定/播放失败时,释放已占用的摄像头
+    scanner.stop()
     status.value = 'denied'
     statusText.value =
       err?.name === 'NotAllowedError'
